@@ -1,0 +1,142 @@
+COMP 2406 2024F Assignment 4
+Name: Gana Said
+Student ID: 101329317 
+
+1.The number of submission is hardcoded in:
+
+1- in "validator-core.js" the constant expectedQuestionList is defined as "1,2,3,4,5,6,7"
+ which defines the exact questions expected.
+
+
+The expectedQuestionList constant is used to dynamically create the database fields in authdb.js.
+ This happens through the variables createQFields (which sets up the fields) and queryQFields (which retrieves them).
+
+ Compared to previous versions of the application: the number of questions was directly written into different parts of the code
+  such as in validation logic. In this one "authdemo2" it centralizes this value in expectedQuestionList
+   This makes the system more flexible to change the list of the expected questions in one place automatically updates the validation and database logic throughout the application.
+ I approach this by looking at the codebase for constants or logic that define the expected questions.
+ This question was straightforward.
+  By examining the validator-core.js file, I quickly found the expectedQuestionList constant, which defines the list of questions
+  so I didnt face any challenges with it.
+
+2.The submission data is uploaded as a "JSON" object with two fields:
+
+filename: The name of the file being uploaded.
+filecontents: The full content of the file as a string. 
+I confirmed this by checking the doUploadSubmission() function in validator.js
+ which sends the data using:
+ //JSON.stringify({filename, filecontents});
+ also,on the server side the addSubmission() function expects these fields in the request body.
+
+I approach this by tracing the submission process starting from the client-side code ( doUploadSubmission() in validator.js)
+and looking at what data is sent in the request body and how it is processed server-side (addSubmission() in authdemo2.js).
+
+
+This was an easy question. By following the flow of data in the code, I saw that the client sends a JSON object 
+so I didnt face any challenges with that question too.
+ 3.When a user uploads more than one submission the new submission replaces the old one in the database
+this because the INSERT OR REPLACE statement in the addSubmissionDB() function in authdb.js:
+//INSERT OR REPLACE INTO ${submissionTable} (studentID, q1, q2, q3, q4, q5, q6, q7) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+This to  make sure that each studentID can have only one submission at a time.
+
+I approach this by understanding how submissions are handled in the database by reviewing the addSubmissionDB() function in authdb.js
+and checking if there are constraints or logic that replace existing submissions.
+
+
+This question was straightforward. By looking at the addSubmissionDB() function I noticed the use of INSERT OR REPLACE which replaces a previous submission with the same studentID.
+ This behavior is different from earlier versions where such logic didn’t exist.
+
+4.Yes, users can upload invalid submissions if client-side validation is bypassed (by using curl)
+ however, those submissions will not be stored in the database because in the server-side checkSubmission() function ensures that only valid submissions are processed
+ and prevents invalid data from being added to the database:
+//if (!q) {
+//  return {
+//       contentType: "text/plain",
+//     status: status_BAD_REQUEST,
+//   contents: "Bad Request: Invalid parsed submission upload", };
+//}
+
+I approach this by checking how submissions are validated client-side (checkSubmission() in validator.js) and server-side (addSubmission() in authdemo2.js)
+and determine what happens if invalid submissions bypass client-side validation and reach the server.
+
+
+This was an easy question. I confirmed that invalid submissions are rejected by the server because the checkSubmission() function ensures that only valid data is passed to addSubmissionDB().
+
+
+5.to report the number of the empty answers I used the existing calcBlankQuestionStats() function in authdb.js
+ This function already calculates the number of blank answers for all questions, so I can reuse it without adding new logic.
+  so what I did is adding a function in authdb.js to return the count of empty answers:
+//export function countEmptyAnswers() {
+//    return calcBlankQuestionStats();
+//}
+and then I modified  showAnalysis() in authdemo2.js to include the count of empty answers:
+//var blankCounts = db.countEmptyAnswers();
+//var blankQuestionsList = '<li>' + blankCounts.join('</li> <li>') + '</li>';
+//analysisBody += `
+//<p>Empty Answers:
+//  <ol>${blankQuestionsList}</ol>
+//</p>`;
+
+ I approach this by finding  existing functions that calculate or process submission data and reuse it 
+  to minimize new code.
+
+  I didnt really face challenges the main task was integrating this data into the analysis page with minimal changes to existing logic.
+
+
+6.No, you cannot easily tell if two users chose the same password because passwords are hashed before storage in the createAcct() function in authdemo2.js
+//const pwhash = await hash(body.get("password"));
+ Even if two users choose the same passwor hashing transforms the password into a unique,fixed and random salt to each password
+ so even if two users choose identical passwords, the resulting hashes will be different.
+I approach this understand how passwords are processed before storage and how hashing works.
+the challenge I faced for this question was to understand what is hashing
+and what was the use of crypto.randomUUID. 
+
+ 7.authdemo2 stores a "sessionid" in the cookie to indicate that a user is logged in:
+ //responseInit.headers["Set-Cookie"] = "sessionid=" + r.sessionid;
+ This sessionid is a unique identifier generated using crypto.randomUUID() in the newSession() function in authdb.js:
+//const sessionid = crypto.randomUUID();
+
+
+-it's better because this approach is more secure than storing the username directly because the server verifies the session against its database preventing tampering or denied access.
+-it's worse because it requires a database lookup for every request which can slow down performance
+ especially with a large number of users or requests.
+
+I approach this by reviewing the login() function in authdemo2.js to see what is set in the cookie when a user logs in
+the challenge  faced was to find the advantages and disadvantages of using sessionid (understaning this was part of q 6 ) so it was easir 
+to find 
+ 8.sessions are valid for 72 hours (3 days) as defined by the sessionLength constant in authdb.js:
+ //const sessionLength = 3600 * 72 * 1000;  (milliseconds)
+
+ so to make it 10 minutes I updated the constant to:
+ //const sessionLength = 10 * 60 * 1000;
+
+ I approach this by checking how session expiration is handled in the newSession() function in authdb.js
+and looking for constants defining session duration.
+
+No challenges are faced.
+
+ 9.To make authdemo2 store the uploaded filename and file contents in its database I build on the existing functionality and made a few specific changes.
+ the application already passes the filename and filecontents from the client to the server
+  This happens in the doUploadSubmission() function in validator.js
+  where these fields are sent in the request body as JSON:
+  //JSON.stringify({filename, filecontents});
+  the addSubmission() function in authdemo2.js processes these fields but currently they are not stored in the database.
+  so to store it I modified the CREATE TABLE statement for the submissions table in authdb.js to include two new columns: filename and filecontents:
+//filename TEXT,
+//filecontents TEXT,
+
+and then in addSubmission() I update the INSERT query to include the new fields:
+//return db.query(`INSERT OR REPLACE INTO ${submissionTable} 
+//    (studentID, filename, filecontents, q1, q2, q3, q4, q5, q6, q7)
+//    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+//    [r.studentID, r.filename, r.filecontents, r.q1, r.q2, r.q3, r.q4, r.q5, r.q6, r.q7]);
+
+finally I made sure that in addSubmission() in authdemo2.js, the filename and filecontents are included when calling addSubmissionDB().
+//const result = db.addSubmission({
+//    studentID: q.studentID,
+//    filename: submission.filename,
+//    filecontents: submission.filecontents,
+//    ...
+//});
+
+this question was similar to other stuff we did in tutorials so it was easy to approach 
